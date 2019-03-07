@@ -32,6 +32,7 @@ export default {
   watch: {
     data (v) {
       this.total = v.length / 3
+      console.log(v)
     }
   },
   computed: {

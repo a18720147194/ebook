@@ -63,7 +63,7 @@
     </scroll>
     <div class="bottom-wrapper">
       <div class="bottom-btn" @click.stop.prevent="readBook()">{{$t('detail.read')}}</div>
-      <div class="bottom-btn" @click.stop.prevent="trialListening()">{{$t('detail.listen')}}</div>
+      <!-- <div class="bottom-btn" @click.stop.prevent="trialListening()">{{$t('detail.listen')}}</div> -->
       <div class="bottom-btn" @click.stop.prevent="addOrRemoveShelf()">
         <span class="icon-check" v-if="inBookShelf"></span>
         {{inBookShelf ? $t('detail.isAddedToShelf') : $t('detail.addOrRemoveShelf')}}
@@ -74,282 +74,282 @@
 </template>
 
 <script type="text/ecmascript-6">
-  import DetailTitle from '@/components/detail/detaiTitle'
-  import BookInfo from '@/components/detail/bookInfo'
-  import Scroll from '@/components/Scroll'
-  import Toast from '@/components/shelf/toast'
-  import { removeFromBookShelf, addToShelf } from '@/utils/book'
-  import { flatList, detail } from '@/api/book'
-  import { px2rem, realPx } from '@/utils/utils'
-  import { getLocalForage } from '@/utils/localForage'
-  import { getLocalStorage } from '@/utils/localStorage'
-  import Epub from 'epubjs'
+import DetailTitle from '@/components/detail/detaiTitle'
+import BookInfo from '@/components/detail/bookInfo'
+import Scroll from '@/components/Scroll'
+import Toast from '@/components/shelf/toast'
+import { removeFromBookShelf, addToShelf } from '@/utils/book'
+import { flatList, detail } from '@/api/book'
+import { px2rem, realPx } from '@/utils/utils'
+import { getLocalForage } from '@/utils/localForage'
+import { getLocalStorage } from '@/utils/localStorage'
+import Epub from 'epubjs'
 
-  global.ePub = Epub
+global.ePub = Epub
 
-  export default {
-    components: {
-      DetailTitle,
-      Scroll,
-      BookInfo,
-      Toast
-    },
-    computed: {
-      desc() {
-        if (this.description) {
-          return this.description.substring(0, 100)
-        } else {
-          return ''
-        }
-      },
-      flatNavigation() {
-        if (this.navigation) {
-          return Array.prototype.concat.apply([], Array.prototype.concat.apply([], this.doFlatNavigation(this.navigation.toc)))
-        } else {
-          return []
-        }
-      },
-      lang() {
-        return this.metadata ? this.metadata.language : '-'
-      },
-      isbn() {
-        return this.metadata ? this.metadata.identifier : '-'
-      },
-      publisher() {
-        return this.metadata ? this.metadata.publisher : '-'
-      },
-      title() {
-        return this.metadata ? this.metadata.title : ''
-      },
-      author() {
-        return this.metadata ? this.metadata.creator : ''
-      },
-      inBookShelf() {
-        if (this.bookItem && this.bookShelf) {
-          const flatShelf = (function flatten(arr) {
-            return [].concat(...arr.map(v => v.itemList ? [v, ...flatten(v.itemList)] : v))
-          })(this.bookShelf).filter(item => item.type === 1)
-          const book = flatShelf.filter(item => item.fileName === this.bookItem.fileName)
-          return book && book.length > 0
-        } else {
-          return false
-        }
+export default {
+  components: {
+    DetailTitle,
+    Scroll,
+    BookInfo,
+    Toast
+  },
+  computed: {
+    desc () {
+      if (this.description) {
+        return this.description.substring(0, 100)
+      } else {
+        return ''
       }
     },
-    data() {
-      return {
-        bookShelf: null,
-        bookItem: null,
-        book: null,
-        metadata: null,
-        trialRead: null,
-        cover: null,
-        navigation: null,
-        displayed: false,
-        audio: null,
-        randomLocation: null,
-        description: null,
-        toastText: '',
-        trialText: null,
-        categoryText: null,
-        opf: null
+    flatNavigation () {
+      if (this.navigation) {
+        return Array.prototype.concat.apply([], Array.prototype.concat.apply([], this.doFlatNavigation(this.navigation.toc)))
+      } else {
+        return []
       }
     },
-    methods: {
-      addOrRemoveShelf() {
-        if (this.inBookShelf) {
-          removeFromBookShelf(this.bookItem)
-        } else {
-          addToShelf(this.bookItem)
-        }
-        this.bookShelf = getLocalStorage('bookShelf')
-      },
-      showToast(text) {
-        this.toastText = text
-        this.$refs.toast.show()
-      },
-      readBook() {
-        getLocalForage(this.bookItem.fileName, (err, value) => {
-          if (!err && value instanceof Blob) {
-            this.$router.push({
-              path: `/ebook/${this.bookItem.fileName}`
-            })
-          } else {
-            // this.showToast(this.$t('shelf.downloadFirst'))
-            this.$router.push({
-              path: `/ebook/${this.bookItem.fileName}`,
-              query: {
-                opf: this.opf
-              }
-            })
-          }
-        })
-      },
-      trialListening() {
-        getLocalForage(this.bookItem.fileName, (err, value) => {
-          if (!err && value instanceof Blob) {
-            this.$router.push({
-              path: '/book-store/book-speaking',
-              query: {
-                fileName: this.bookItem.fileName
-              }
-            })
-          } else {
-            // this.showToast(this.$t('shelf.downloadFirst'))
-            this.$router.push({
-              path: '/book-store/book-speaking',
-              query: {
-                fileName: this.bookItem.fileName,
-                opf: this.opf
-              }
-            })
-          }
-        })
-      },
-      read(item) {
-        getLocalForage(this.bookItem.fileName, (err, value) => {
-          if (!err && value instanceof Blob) {
-            this.$router.push({
-              path: `/ebook/${this.bookItem.fileName}`,
-              query: {
-                navigation: item.href
-              }
-            })
-          } else {
-            // this.showToast(this.$t('shelf.downloadFirst'))
-            this.$router.push({
-              path: `/ebook/${this.bookItem.fileName}`,
-              query: {
-                navigation: item.href,
-                opf: this.opf
-              }
-            })
-          }
-        })
-      },
-      itemStyle(item) {
-        return {
-          marginLeft: (item.deep - 1) * px2rem(20) + 'rem'
-        }
-      },
-      doFlatNavigation(content, deep = 1) {
-        const arr = []
-        content.forEach(item => {
-          item.deep = deep
-          arr.push(item)
-          if (item.subitems && item.subitems.length > 0) {
-            arr.push(this.doFlatNavigation(item.subitems, deep + 1))
-          }
-        })
-        return arr
-      },
-      initBook() {
-        if (this.bookItem) {
-          getLocalForage(this.bookItem.fileName, (err, blob) => {
-            if (err) {
-              this.downloadBook()
-            } else {
-              if (blob) {
-                this.parseBook(blob)
-              } else {
-                this.downloadBook()
-              }
-            }
-          })
-        }
-      },
-      downloadBook() {
-        const opf = `${process.env.VUE_APP_EPUB_URL}/${this.bookItem.categoryText}/${this.bookItem.fileName}/OEBPS/package.opf`
-        this.parseBook(opf)
-      },
-      parseBook(blob) {
-        this.book = new Epub(blob)
-        this.book.loaded.metadata.then(metadata => {
-          this.metadata = metadata
-        })
-        this.book.loaded.navigation.then(nav => {
-          this.navigation = nav
-          if (this.navigation.toc && this.navigation.toc.length > 1) {
-            this.display(this.navigation.toc[1].href)
-              .then(section => {
-                if (this.$refs.scroll) {
-                  this.$refs.scroll.refresh()
-                }
-                this.displayed = true
-                const reg = new RegExp('<.+?>', 'g')
-                const text = section.output.replace(reg, '').replace(/\s\s/g, '')
-                this.description = text
-              })
-          }
-        })
-      },
-      findBookFromList(fileName) {
-        flatList().then(response => {
-          if (response.status === 200) {
-            const bookList = response.data.data.filter(item => item.fileName === fileName)
-            if (bookList && bookList.length > 0) {
-              this.bookItem = bookList[0]
-              console.log(this.bookItem)
-              this.initBook()
-            }
-          }
-        })
-      },
-      init() {
-        const fileName = this.$route.query.fileName
-        this.categoryText = this.$route.query.category
-        if (fileName) {
-          detail({
-            fileName: fileName
-          }).then(response => {
-            if (response.status === 200 && response.data.error_code === 0 && response.data.data) {
-              const data = response.data.data
-              this.bookItem = data
-              this.cover = this.bookItem.cover
-              let rootFile = data.rootFile
-              if (rootFile.startsWith('/')) {
-                rootFile = rootFile.substring(1, rootFile.length)
-              }
-              this.opf = `${process.env.VUE_APP_EPUB_OPF_URL}/${fileName}/${rootFile}`
-              this.parseBook(this.opf)
-            } else {
-              this.showToast(response.data.msg)
-            }
-          })
-        }
-        this.bookShelf = getLocalStorage('bookShelf')
-      },
-      back() {
-        this.$router.go(-1)
-      },
-      display(location) {
-        if (this.$refs.preview) {
-          if (!this.rendition) {
-            this.rendition = this.book.renderTo('preview', {
-              width: window.innerWidth > 640 ? 640 : window.innerWidth,
-              height: window.innerHeight,
-              method: 'default'
-            })
-          }
-          if (!location) {
-            return this.rendition.display()
-          } else {
-            return this.rendition.display(location)
-          }
-        }
-      },
-      onScroll(offsetY) {
-        if (offsetY > realPx(42)) {
-          this.$refs.title.showShadow()
-        } else {
-          this.$refs.title.hideShadow()
-        }
-      }
+    lang () {
+      return this.metadata ? this.metadata.language : '-'
     },
-    mounted() {
-      this.init()
+    isbn () {
+      return this.metadata ? this.metadata.identifier : '-'
+    },
+    publisher () {
+      return this.metadata ? this.metadata.publisher : '-'
+    },
+    title () {
+      return this.metadata ? this.metadata.title : ''
+    },
+    author () {
+      return this.metadata ? this.metadata.creator : ''
+    },
+    inBookShelf () {
+      if (this.bookItem && this.bookShelf) {
+        const flatShelf = (function flatten (arr) {
+          return [].concat(...arr.map(v => v.itemList ? [v, ...flatten(v.itemList)] : v))
+        })(this.bookShelf).filter(item => item.type === 1)
+        const book = flatShelf.filter(item => item.fileName === this.bookItem.fileName)
+        return book && book.length > 0
+      } else {
+        return false
+      }
     }
+  },
+  data () {
+    return {
+      bookShelf: null,
+      bookItem: null,
+      book: null,
+      metadata: null,
+      trialRead: null,
+      cover: null,
+      navigation: null,
+      displayed: false,
+      audio: null,
+      randomLocation: null,
+      description: null,
+      toastText: '',
+      trialText: null,
+      categoryText: null,
+      opf: null
+    }
+  },
+  methods: {
+    addOrRemoveShelf () {
+      if (this.inBookShelf) {
+        removeFromBookShelf(this.bookItem)
+      } else {
+        addToShelf(this.bookItem)
+      }
+      this.bookShelf = getLocalStorage('bookShelf')
+    },
+    showToast (text) {
+      this.toastText = text
+      this.$refs.toast.show()
+    },
+    readBook () {
+      getLocalForage(this.bookItem.fileName, (err, value) => {
+        if (!err && value instanceof Blob) {
+          this.$router.push({
+            path: `/ebook/${this.bookItem.fileName}`
+          })
+        } else {
+          // this.showToast(this.$t('shelf.downloadFirst'))
+          this.$router.push({
+            path: `/ebook/${this.bookItem.fileName}`,
+            query: {
+              opf: this.opf
+            }
+          })
+        }
+      })
+    },
+    // trialListening () {
+    //   getLocalForage(this.bookItem.fileName, (err, value) => {
+    //     if (!err && value instanceof Blob) {
+    //       this.$router.push({
+    //         path: '/book-store/book-speaking',
+    //         query: {
+    //           fileName: this.bookItem.fileName
+    //         }
+    //       })
+    //     } else {
+    //       // this.showToast(this.$t('shelf.downloadFirst'))
+    //       this.$router.push({
+    //         path: '/book-store/book-speaking',
+    //         query: {
+    //           fileName: this.bookItem.fileName,
+    //           opf: this.opf
+    //         }
+    //       })
+    //     }
+    //   })
+    // },
+    read (item) {
+      getLocalForage(this.bookItem.fileName, (err, value) => {
+        if (!err && value instanceof Blob) {
+          this.$router.push({
+            path: `/ebook/${this.bookItem.fileName}`,
+            query: {
+              navigation: item.href
+            }
+          })
+        } else {
+          // this.showToast(this.$t('shelf.downloadFirst'))
+          this.$router.push({
+            path: `/ebook/${this.bookItem.fileName}`,
+            query: {
+              navigation: item.href,
+              opf: this.opf
+            }
+          })
+        }
+      })
+    },
+    itemStyle (item) {
+      return {
+        marginLeft: (item.deep - 1) * px2rem(20) + 'rem'
+      }
+    },
+    doFlatNavigation (content, deep = 1) {
+      const arr = []
+      content.forEach(item => {
+        item.deep = deep
+        arr.push(item)
+        if (item.subitems && item.subitems.length > 0) {
+          arr.push(this.doFlatNavigation(item.subitems, deep + 1))
+        }
+      })
+      return arr
+    },
+    initBook () {
+      if (this.bookItem) {
+        getLocalForage(this.bookItem.fileName, (err, blob) => {
+          if (err) {
+            this.downloadBook()
+          } else {
+            if (blob) {
+              this.parseBook(blob)
+            } else {
+              this.downloadBook()
+            }
+          }
+        })
+      }
+    },
+    downloadBook () {
+      const opf = `${process.env.VUE_APP_EPUB_URL}/${this.bookItem.categoryText}/${this.bookItem.fileName}/OEBPS/package.opf`
+      this.parseBook(opf)
+    },
+    parseBook (blob) {
+      this.book = new Epub(blob)
+      this.book.loaded.metadata.then(metadata => {
+        this.metadata = metadata
+      })
+      this.book.loaded.navigation.then(nav => {
+        this.navigation = nav
+        if (this.navigation.toc && this.navigation.toc.length > 1) {
+          this.display(this.navigation.toc[1].href)
+            .then(section => {
+              if (this.$refs.scroll) {
+                this.$refs.scroll.refresh()
+              }
+              this.displayed = true
+              const reg = new RegExp('<.+?>', 'g')
+              const text = section.output.replace(reg, '').replace(/\s\s/g, '')
+              this.description = text
+            })
+        }
+      })
+    },
+    findBookFromList (fileName) {
+      flatList().then(response => {
+        if (response.status === 200) {
+          const bookList = response.data.data.filter(item => item.fileName === fileName)
+          if (bookList && bookList.length > 0) {
+            this.bookItem = bookList[0]
+            console.log(this.bookItem)
+            this.initBook()
+          }
+        }
+      })
+    },
+    init () {
+      const fileName = this.$route.query.fileName
+      this.categoryText = this.$route.query.category
+      if (fileName) {
+        detail({
+          fileName: fileName
+        }).then(response => {
+          if (response.status === 200 && response.data.error_code === 0 && response.data.data) {
+            const data = response.data.data
+            this.bookItem = data
+            this.cover = this.bookItem.cover
+            let rootFile = data.rootFile
+            if (rootFile.startsWith('/')) {
+              rootFile = rootFile.substring(1, rootFile.length)
+            }
+            this.opf = `${process.env.VUE_APP_EPUB_OPF_URL}/${fileName}/${rootFile}`
+            this.parseBook(this.opf)
+          } else {
+            this.showToast(response.data.msg)
+          }
+        })
+      }
+      this.bookShelf = getLocalStorage('bookShelf')
+    },
+    back () {
+      this.$router.go(-1)
+    },
+    display (location) {
+      if (this.$refs.preview) {
+        if (!this.rendition) {
+          this.rendition = this.book.renderTo('preview', {
+            width: window.innerWidth > 640 ? 640 : window.innerWidth,
+            height: window.innerHeight,
+            method: 'default'
+          })
+        }
+        if (!location) {
+          return this.rendition.display()
+        } else {
+          return this.rendition.display(location)
+        }
+      }
+    },
+    onScroll (offsetY) {
+      if (offsetY > realPx(42)) {
+        this.$refs.title.showShadow()
+      } else {
+        this.$refs.title.hideShadow()
+      }
+    }
+  },
+  mounted () {
+    this.init()
   }
+}
 </script>
 
 <style lang="scss" rel="stylesheet/scss" scoped>

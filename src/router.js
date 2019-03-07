@@ -47,12 +47,12 @@ export default new Router({
           path: '/book-store/detail',
           component: resolve => require(['@/views/store/bookDetail.vue'], resolve),
           meta: { key: 5 }
-        },
-        {
-          path: '/book-store/book-speaking',
-          component: resolve => require(['@/views/store/bookSpeaking.vue'], resolve),
-          meta: { key: 6 }
         }
+        // {
+        //   path: '/book-store/book-speaking',
+        //   component: resolve => require(['@/views/store/bookSpeaking.vue'], resolve),
+        //   meta: { key: 6 }
+        // }
       ]
     }
   ]
